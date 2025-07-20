@@ -29,7 +29,7 @@ import {
 import { Transaction } from "./StatementCard";
 import { auth } from "@/infrastructure/firebase/config";
 import { updateUserBalance } from "@/infrastructure/firebase/getBalance";
-import { useAuthStore } from "@/store/useAuthStore";
+import { useAuth } from "@/contexts/useAuthContext";
 
 interface EditModalProps {
     visible: boolean;
@@ -45,7 +45,7 @@ export default function ConfirmEditModal({
     onFinish,
 }: EditModalProps) {
     const db = getFirestore();
-    const { refreshUserData, userData } = useAuthStore();
+    const { refreshUserData, userData } = useAuth();
 
     const [date, setDate] = useState(new Date());
     const [amount, setAmount] = useState("");

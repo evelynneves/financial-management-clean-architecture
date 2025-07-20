@@ -19,7 +19,7 @@ import {
 } from "react-native";
 
 import { Transaction } from "./StatementCard";
-import { useAuthStore } from "@/store/useAuthStore";
+import { useAuth } from "@/contexts/useAuthContext";
 
 interface DetailsModalProps {
     visible: boolean;
@@ -32,7 +32,7 @@ export default function TransactionDetailsModal({
     transaction,
     onClose,
 }: DetailsModalProps) {
-    const { user } = useAuthStore();
+    const { user } = useAuth();
     
     if (!transaction) return null;
 

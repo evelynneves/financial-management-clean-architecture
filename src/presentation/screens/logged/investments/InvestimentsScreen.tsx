@@ -13,12 +13,12 @@ import { View, StyleSheet, Text, Dimensions } from "react-native";
 import { PieChart } from "react-native-chart-kit";
 
 import ScreenWrapper from "@/presentation/components/ScreenWrapper";
-import { useAuthStore } from "@/store/useAuthStore";
+import { useAuth } from "@/contexts/useAuthContext";
 
 const screenWidth = Dimensions.get("window").width;
 
 export default function InvestmentsScreen() {
-    const { userData } = useAuthStore();
+    const { userData } = useAuth();
 
     const parseCurrency = (value: string | undefined): number => {
         if (!value) return 0;

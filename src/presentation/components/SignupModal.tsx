@@ -25,7 +25,7 @@ import {
     ActivityIndicator,
 } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-import { useAuthStore } from "@/store/useAuthStore";
+import { useAuth } from "@/contexts/useAuthContext";
 
 interface Props {
     visible: boolean;
@@ -34,7 +34,7 @@ interface Props {
 }
 
 export default function SignupModal({ visible, onClose, onSuccess }: Props) {
-    const { signUp } = useAuthStore();
+    const { signUp } = useAuth();
     const [nome, setName] = useState("");
     const [email, setEmail] = useState("");
     const [senha, setPassword] = useState("");

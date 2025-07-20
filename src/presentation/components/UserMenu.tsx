@@ -8,7 +8,7 @@
 *                                                                             *
 *******************************************************************************/
 
-import { useAuthStore } from "@/store/useAuthStore";
+import { useAuth } from "@/contexts/useAuthContext";
 import React, { useState, useRef, useEffect } from "react";
 import {
     Text,
@@ -23,7 +23,7 @@ import {
 export default function UserMenu() {
     const [visible, setVisible] = useState(false);
     const slideAnim = useRef(new Animated.Value(-150)).current;
-    const { logout } = useAuthStore();
+    const { logout } = useAuth();
 
     const handleLogout = () => {
         setVisible(false);

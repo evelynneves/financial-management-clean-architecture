@@ -36,7 +36,7 @@ import { router, useFocusEffect } from "expo-router";
 import { auth } from "@/infrastructure/firebase/config";
 import { updateUserBalance } from "@/infrastructure/firebase/getBalance";
 import ScreenWrapper from "@/presentation/components/ScreenWrapper";
-import { useAuthStore } from "@/store/useAuthStore";
+import { useAuth } from "@/contexts/useAuthContext";
 
 const transactionTypes = [
     { label: "Depósito", value: "deposito" },
@@ -66,7 +66,7 @@ const NewTransactionScreen = () => {
     const [pdf, setPdf] = useState<DocumentPicker.DocumentPickerAsset | null>(
         null
     );
-    const { refreshUserData, userData } = useAuthStore();
+    const { refreshUserData, userData } = useAuth();
     const db = getFirestore();
     const storage = getStorage();
     const [isSubmitting, setIsSubmitting] = useState(false);

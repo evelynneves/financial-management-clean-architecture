@@ -1,5 +1,5 @@
-import ServicesScreen from "@/presentation/screens/logged/services/ServicesScreen";
+import ServicesUnloggedScreen from "@/presentation/screens/unlogged/services/ServicesScreen";
 
 export default function ServicesPage() {
-    return <ServicesScreen />;
+    return <ServicesUnloggedScreen />;
 }

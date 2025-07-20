@@ -32,12 +32,12 @@ import {
 } from "firebase/firestore";
 import { useFocusEffect } from "expo-router";
 import StatementCard, { Transaction } from "@/presentation/components/StatementCard";
-import { useAuthStore } from "@/store/useAuthStore";
+import { useAuth } from "@/contexts/useAuthContext";
 
 const PAGE_SIZE = 5;
 
 export default function HomeScreen() {
-    const { user } = useAuthStore();
+    const { user } = useAuth();
     const db = getFirestore();
     const uid = user?.uid;
 

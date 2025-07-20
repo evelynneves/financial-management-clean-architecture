@@ -1,12 +1,12 @@
 /******************************************************************************
-*                                                                             *
-* Creation Date : 16/04/2025                                                  *
-*                                                                             *
-* Property : (c) This program, code or item is the Intellectual Property of   *
-* Evelyn Neves Barreto. Any use or copy of this code is prohibited without    *
-* the express written authorization of Evelyn. All rights reserved.           *
-*                                                                             *
-*******************************************************************************/
+ *                                                                             *
+ * Creation Date : 16/04/2025                                                  *
+ *                                                                             *
+ * Property : (c) This program, code or item is the Intellectual Property of   *
+ * Evelyn Neves Barreto. Any use or copy of this code is prohibited without    *
+ * the express written authorization of Evelyn. All rights reserved.           *
+ *                                                                             *
+ ******************************************************************************/
 
 import { Drawer } from "expo-router/drawer";
 import { Image, Platform } from "react-native";
@@ -19,10 +19,7 @@ export default function UnloggedLayout() {
             <SafeAreaView style={{ flex: 1 }}>
                 <Drawer
                     screenOptions={{
-                        headerStyle: {
-                            backgroundColor: "#000000",
-                            height: 60,
-                        },
+                        headerStyle: { backgroundColor: "#000000", height: 60 },
                         headerLeftContainerStyle: {
                             alignItems: "center",
                             height: "100%",
@@ -38,10 +35,7 @@ export default function UnloggedLayout() {
                         headerRight: () => (
                             <Image
                                 source={require("../../../assets/images/logo.png")}
-                                style={{
-                                    height: 60,
-                                    marginRight: 16,
-                                }}
+                                style={{ height: 60, marginRight: 16 }}
                                 resizeMode="contain"
                             />
                         ),
@@ -50,12 +44,8 @@ export default function UnloggedLayout() {
                             borderTopRightRadius: 0,
                             borderBottomRightRadius: 0,
                         },
-                        drawerItemStyle: {
-                            borderRadius: 0,
-                        },
-                        drawerLabelStyle: {
-                            fontWeight: "bold",
-                        },
+                        drawerItemStyle: { borderRadius: 0 },
+                        drawerLabelStyle: { fontWeight: "bold" },
                         drawerActiveTintColor: "#FF5031",
                         drawerInactiveTintColor: "#000000",
                         drawerActiveBackgroundColor: "transparent",
@@ -63,24 +53,15 @@ export default function UnloggedLayout() {
                 >
                     <Drawer.Screen
                         name="index"
-                        options={{
-                            drawerLabel: "Início",
-                            title: "",
-                        }}
+                        options={{ drawerLabel: "Início", title: "" }}
                     />
                     <Drawer.Screen
                         name="about/index"
-                        options={{
-                            drawerLabel: "Sobre",
-                            title: "",
-                        }}
+                        options={{ drawerLabel: "Sobre", title: "" }}
                     />
                     <Drawer.Screen
                         name="services/index"
-                        options={{
-                            drawerLabel: "Serviços",
-                            title: "",
-                        }}
+                        options={{ drawerLabel: "Serviços", title: "" }}
                     />
                 </Drawer>
             </SafeAreaView>

@@ -23,7 +23,7 @@ import { getStorage, ref, deleteObject } from "firebase/storage";
 import { Transaction } from "./StatementCard";
 import { auth } from "@/infrastructure/firebase/config";
 import { updateUserBalance } from "@/infrastructure/firebase/getBalance";
-import { useAuthStore } from "@/store/useAuthStore";
+import { useAuth } from "@/contexts/useAuthContext";
 
 interface ConfirmDeleteModalProps {
     visible: boolean;
@@ -40,7 +40,7 @@ export default function ConfirmDeleteModal({
     onFinish,
     onReload,
 }: ConfirmDeleteModalProps) {
-    const { refreshUserData } = useAuthStore();
+    const { refreshUserData } = useAuth();
     const db = getFirestore();
     const storage = getStorage();
     const [isDeleting, setIsDeleting] = useState(false);

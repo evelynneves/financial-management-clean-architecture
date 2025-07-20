@@ -21,7 +21,7 @@ import { MaterialCommunityIcons } from "@expo/vector-icons";
 import TransactionDetailsModal from "./TransactionDetailsModal";
 import ConfirmEditModal from "./ConfirmEditModal";
 import ConfirmDeleteModal from "./ConfirmDeleteModal";
-import { useAuthStore } from "@/store/useAuthStore";
+import { useAuth } from "@/contexts/useAuthContext";
 
 export type TransactionType =
     | "Depósito"
@@ -48,7 +48,7 @@ export default function StatementCard({
     transactions: Transaction[];
     onReload: () => void;
 }) {
-    const { refreshUserData } = useAuthStore();
+    const { refreshUserData } = useAuth();
     const [showConfirmModal, setShowConfirmModal] = useState(false);
     const [showEditModal, setShowEditModal] = useState(false);
     const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null);

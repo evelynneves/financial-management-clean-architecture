@@ -1,12 +1,12 @@
 /******************************************************************************
-*                                                                             *
-* Creation Date : 16/04/2025                                                  *
-*                                                                             *
-* Property : (c) This program, code or item is the Intellectual Property of   *
-* Evelyn Neves Barreto. Any use or copy of this code is prohibited without    *
-* the express written authorization of Evelyn. All rights reserved.           *
-*                                                                             *
-*******************************************************************************/
+ *                                                                             *
+ * Creation Date : 16/04/2025                                                  *
+ *                                                                             *
+ * Property : (c) This program, code or item is the Intellectual Property of   *
+ * Evelyn Neves Barreto. Any use or copy of this code is prohibited without    *
+ * the express written authorization of Evelyn. All rights reserved.           *
+ *                                                                             *
+ ******************************************************************************/
 
 import { Drawer } from "expo-router/drawer";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
@@ -15,17 +15,16 @@ import { useEffect } from "react";
 import { ActivityIndicator, Platform, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import UserMenu from "@/presentation/components/UserMenu";
-import { useAuthStore } from "@/store/useAuthStore";
+import { useAuth } from "@/contexts/useAuthContext";
 
 export default function LoggedLayout() {
-    const { user, loading } = useAuthStore();
+    const { user, loading } = useAuth();
     const router = useRouter();
 
     useEffect(() => {
         if (!loading && !user) {
             router.replace("/(unlogged)");
         }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [loading, user]);
 
     if (loading || (!user && !loading)) {
@@ -47,10 +46,7 @@ export default function LoggedLayout() {
             <SafeAreaView style={{ flex: 1 }}>
                 <Drawer
                     screenOptions={{
-                        headerStyle: {
-                            backgroundColor: "#004D61",
-                            height: 60,
-                        },
+                        headerStyle: { backgroundColor: "#004D61", height: 60 },
                         headerLeftContainerStyle: {
                             alignItems: "center",
                             height: "100%",
@@ -69,12 +65,8 @@ export default function LoggedLayout() {
                             borderTopRightRadius: 0,
                             borderBottomRightRadius: 0,
                         },
-                        drawerItemStyle: {
-                            borderRadius: 0,
-                        },
-                        drawerLabelStyle: {
-                            fontWeight: "bold",
-                        },
+                        drawerItemStyle: { borderRadius: 0 },
+                        drawerLabelStyle: { fontWeight: "bold" },
                         drawerActiveTintColor: "#FF5031",
                         drawerInactiveTintColor: "#000000",
                         drawerActiveBackgroundColor: "transparent",
@@ -82,38 +74,23 @@ export default function LoggedLayout() {
                 >
                     <Drawer.Screen
                         name="home/index"
-                        options={{
-                            drawerLabel: "Início",
-                            title: "",
-                        }}
+                        options={{ drawerLabel: "Início", title: "" }}
                     />
                     <Drawer.Screen
                         name="new-transaction/index"
-                        options={{
-                            drawerLabel: "Nova Transação",
-                            title: "",
-                        }}
+                        options={{ drawerLabel: "Nova Transação", title: "" }}
                     />
                     <Drawer.Screen
                         name="transactions/index"
-                        options={{
-                            drawerLabel: "Transações",
-                            title: "",
-                        }}
+                        options={{ drawerLabel: "Transações", title: "" }}
                     />
                     <Drawer.Screen
                         name="investments/index"
-                        options={{
-                            drawerLabel: "Investimentos",
-                            title: "",
-                        }}
+                        options={{ drawerLabel: "Investimentos", title: "" }}
                     />
                     <Drawer.Screen
                         name="services/index"
-                        options={{
-                            drawerLabel: "Outros serviços",
-                            title: "",
-                        }}
+                        options={{ drawerLabel: "Outros serviços", title: "" }}
                     />
                 </Drawer>
             </SafeAreaView>

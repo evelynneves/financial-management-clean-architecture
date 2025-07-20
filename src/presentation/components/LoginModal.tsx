@@ -8,7 +8,7 @@
 *                                                                             *
 *******************************************************************************/
 
-import { useAuthStore } from "@/store/useAuthStore";
+import { useAuth } from "@/contexts/useAuthContext";
 import React, { useEffect, useState } from "react";
 import {
     View,
@@ -33,7 +33,7 @@ interface Props {
 }
 
 export default function LoginModal({ visible, onClose, onSuccess }: Props) {
-    const { login } = useAuthStore();
+    const { login } = useAuth();
     const [email, setEmail] = useState("");
     const [senha, setPassword] = useState("");
     const [erro, setError] = useState("");
