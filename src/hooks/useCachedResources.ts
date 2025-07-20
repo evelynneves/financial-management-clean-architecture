@@ -17,6 +17,8 @@ export default function useCachedResources() {
                     require("../../assets/images/withdraw_icon.png"),
                     require("../../assets/images/points_icon.png"),
                     require("../../assets/images/devices_icon.png"),
+                    require("../../assets/images/illustration_login.png"),
+                    require("../../assets/images/illustration_registration.png"),
                 ]);
             } catch (e) {
                 console.warn("Erro ao carregar assets:", e);
