@@ -17,6 +17,8 @@ import { auth } from "@/infrastructure/firebase/config";
 import { getUserData } from "@/infrastructure/firebase/getUserData";
 import { UserData } from "@/domain/entities/UserData";
 import { router } from "expo-router";
+import { fetchWithCache } from "@/utils/fetchWithCache";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 interface AuthContextProps {
     user: User | null;
@@ -48,7 +50,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             setUser(firebaseUser);
 
             if (firebaseUser) {
-                const data = await getUserData(firebaseUser.uid);
+                const data = await fetchWithCache(
+                    `userData:${firebaseUser.uid}`,
+                    () => getUserData(firebaseUser.uid),
+                    300
+                );
                 setUserData(data);
             } else {
                 setUserData(null);
@@ -71,6 +77,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     const logout = async () => {
         setLoading(true);
+        try {
+            await AsyncStorage.removeItem(`userData:${user?.uid}`);
+        } catch (error) {
+            console.warn("Error while removing user cache:", error);
+        } 
         await signOut(auth);
         setUser(null);
         setUserData(null);

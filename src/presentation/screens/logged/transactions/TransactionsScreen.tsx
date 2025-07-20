@@ -1,12 +1,12 @@
 /******************************************************************************
-*                                                                             *
-* Creation Date : 16/04/2025                                                  *
-*                                                                             *
-* Property : (c) This program, code or item is the Intellectual Property of   *
-* Evelyn Neves Barreto. Any use or copy of this code is prohibited without    *
-* the express written authorization of Evelyn. All rights reserved.           *
-*                                                                             *
-*******************************************************************************/
+ *                                                                             *
+ * Creation Date : 16/04/2025                                                  *
+ *                                                                             *
+ * Property : (c) This program, code or item is the Intellectual Property of   *
+ * Evelyn Neves Barreto. Any use or copy of this code is prohibited without    *
+ * the express written authorization of Evelyn. All rights reserved.           *
+ *                                                                             *
+ *******************************************************************************/
 
 import React, { useCallback, useEffect, useState } from "react";
 import {
@@ -36,12 +36,19 @@ import {
     getDocs,
 } from "firebase/firestore";
 import { useFocusEffect } from "expo-router";
-import StatementCard, { Transaction } from "@/presentation/components/StatementCard";
+import StatementCard, {
+    Transaction,
+} from "@/presentation/components/StatementCard";
 import { auth } from "@/infrastructure/firebase/config";
-
+import { fetchWithCache } from "@/utils/fetchWithCache";
 
 const PAGE_SIZE = 5;
-const transactionTypes = ["Resgate", "Investimento", "Transferência", "Depósito"];
+const transactionTypes = [
+    "Resgate",
+    "Investimento",
+    "Transferência",
+    "Depósito",
+];
 
 export default function TransactionsScreen() {
     const db = getFirestore();
@@ -68,14 +75,6 @@ export default function TransactionsScreen() {
         return () => clearTimeout(timeout);
     }, [searchTerm]);
 
-    useEffect(() => {
-        if (uid) {
-            setTransactions([]);
-            fetchTransactions(true);
-        }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [debouncedSearchTerm, selectedTypes, selectedDate, uid]);
-
     useFocusEffect(
         useCallback(() => {
             fetchTransactions(true);
@@ -86,19 +85,31 @@ export default function TransactionsScreen() {
                 setSearchTerm("");
                 setDebouncedSearchTerm("");
             };
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-        }, [])
+            // eslint-disable-next-line react-hooks/exhaustive-deps
+        }, [uid])
     );
+
+    useEffect(() => {
+        fetchTransactions(true);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [debouncedSearchTerm, selectedTypes, selectedDate]);
 
     const toggleType = (type: string) => {
         setSelectedTypes((prev) =>
-            prev.includes(type) ? prev.filter((t) => t !== type) : [...prev, type]
+            prev.includes(type)
+                ? prev.filter((t) => t !== type)
+                : [...prev, type]
         );
     };
 
     const buildQuery = (startDoc?: any) => {
         const baseRef = collection(db, "users", uid!, "transactions");
-        let q: any = query(baseRef, orderBy("date", "desc"), orderBy("createdAt", "desc"), limit(PAGE_SIZE));
+        let q: any = query(
+            baseRef,
+            orderBy("date", "desc"),
+            orderBy("createdAt", "desc"),
+            limit(PAGE_SIZE)
+        );
 
         if (selectedTypes.length > 0) {
             q = query(q, where("type", "in", selectedTypes));
@@ -119,9 +130,38 @@ export default function TransactionsScreen() {
     async function fetchTransactions(initial = false) {
         try {
             if (!uid) return;
+
+            const isNoFilter =
+                !debouncedSearchTerm.trim() &&
+                selectedTypes.length === 0 &&
+                !selectedDate;
+
             if (initial) {
-                setLoading(true);
-                setLastDoc(null);
+                if (isNoFilter) {
+                    setLoading(true);
+                    setLastDoc(null);
+
+                    const data = await fetchWithCache(
+                        `transactions:${uid}`,
+                        async () => {
+                            const q = buildQuery();
+                            const snapshot = await getDocs(q);
+                            const docs = snapshot.docs.map((doc) => ({
+                                ...(doc.data() as Record<string, any>),
+                                id: doc.id,
+                            })) as Transaction[];
+                            setLastDoc(snapshot.docs[snapshot.docs.length - 1]);
+                            return docs;
+                        },
+                        120
+                    );
+
+                    setTransactions(data);
+                    return;
+                } else {
+                    setLoading(true);
+                    setLastDoc(null);
+                }
             } else {
                 setLoadingMore(true);
             }
@@ -129,13 +169,10 @@ export default function TransactionsScreen() {
             const q = buildQuery(initial ? undefined : lastDoc);
             const snapshot = await getDocs(q);
 
-            const docs = snapshot.docs.map((doc) => {
-                const data = doc.data() as Record<string, any>;
-                return {
-                    ...data,
-                    id: doc.id,
-                } as Transaction;
-            });
+            const docs = snapshot.docs.map((doc) => ({
+                ...(doc.data() as Record<string, any>),
+                id: doc.id,
+            })) as Transaction[];
 
             const filtered = debouncedSearchTerm
                 ? docs.filter((t) =>
@@ -150,9 +187,12 @@ export default function TransactionsScreen() {
         } catch (err) {
             console.error("Erro ao buscar transações:", err);
         } finally {
-            setLoading(false);
-            setLoadingMore(false);
-            setRefreshing(false);
+            if (initial) {
+                setLoading(false);
+                setRefreshing(false);
+            } else {
+                setLoadingMore(false);
+            }
         }
     }
 
@@ -176,21 +216,48 @@ export default function TransactionsScreen() {
                 <View style={styles.headerSection}>
                     <Text style={styles.title}>Lista de Transações</Text>
                     <View style={styles.filters}>
-                        <Pressable style={styles.filterButton} onPress={() => setShowFilterModal(true)}>
-                            <Text style={styles.filterText}>Filtrar por tipo</Text>
-                            <MaterialCommunityIcons name="chevron-down" size={16} color="#004D61" />
+                        <Pressable
+                            style={styles.filterButton}
+                            onPress={() => setShowFilterModal(true)}
+                        >
+                            <Text style={styles.filterText}>
+                                Filtrar por tipo
+                            </Text>
+                            <MaterialCommunityIcons
+                                name="chevron-down"
+                                size={16}
+                                color="#004D61"
+                            />
                         </Pressable>
 
                         <View style={styles.dateWrapper}>
-                            <Pressable style={styles.dateInput} onPress={() => setShowDatePicker(true)}>
+                            <Pressable
+                                style={styles.dateInput}
+                                onPress={() => setShowDatePicker(true)}
+                            >
                                 <Text style={styles.filterText}>
-                                    {selectedDate ? selectedDate.toLocaleDateString("pt-BR") : "dd/mm/aaaa"}
+                                    {selectedDate
+                                        ? selectedDate.toLocaleDateString(
+                                              "pt-BR"
+                                          )
+                                        : "dd/mm/aaaa"}
                                 </Text>
-                                <MaterialCommunityIcons name="calendar" size={16} color="#004D61" />
+                                <MaterialCommunityIcons
+                                    name="calendar"
+                                    size={16}
+                                    color="#004D61"
+                                />
                             </Pressable>
                             {selectedDate && (
-                                <TouchableOpacity onPress={() => setSelectedDate(null)} style={styles.clearDateButton}>
-                                    <MaterialCommunityIcons name="close-circle" size={20} color="#004D61" />
+                                <TouchableOpacity
+                                    onPress={() => setSelectedDate(null)}
+                                    style={styles.clearDateButton}
+                                >
+                                    <MaterialCommunityIcons
+                                        name="close-circle"
+                                        size={20}
+                                        color="#004D61"
+                                    />
                                 </TouchableOpacity>
                             )}
                         </View>
@@ -207,14 +274,21 @@ export default function TransactionsScreen() {
                     </View>
                 </View>
 
-                <Modal transparent animationType="fade" visible={showFilterModal}>
+                <Modal
+                    transparent
+                    animationType="fade"
+                    visible={showFilterModal}
+                >
                     <Pressable
                         style={styles.modalBackground}
                         onPress={() => setShowFilterModal(false)}
                     >
                         <View style={styles.modalContent}>
                             {transactionTypes.map((type) => (
-                                <TouchableOpacity key={type} onPress={() => toggleType(type)}>
+                                <TouchableOpacity
+                                    key={type}
+                                    onPress={() => toggleType(type)}
+                                >
                                     <View style={styles.checkboxRow}>
                                         <MaterialCommunityIcons
                                             name={
@@ -225,7 +299,9 @@ export default function TransactionsScreen() {
                                             size={20}
                                             color="#004D61"
                                         />
-                                        <Text style={styles.checkboxLabel}>{type}</Text>
+                                        <Text style={styles.checkboxLabel}>
+                                            {type}
+                                        </Text>
                                     </View>
                                 </TouchableOpacity>
                             ))}
@@ -246,12 +322,20 @@ export default function TransactionsScreen() {
                 )}
 
                 {loading ? (
-                    <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
+                    <View
+                        style={{
+                            flex: 1,
+                            justifyContent: "center",
+                            alignItems: "center",
+                        }}
+                    >
                         <ActivityIndicator size="large" color="#004D61" />
                     </View>
                 ) : transactions.length === 0 ? (
                     <Text style={styles.emptyMessage}>
-                        {selectedTypes.length > 0 || debouncedSearchTerm || selectedDate
+                        {selectedTypes.length > 0 ||
+                        debouncedSearchTerm ||
+                        selectedDate
                             ? "😕 Nenhum resultado encontrado com os filtros aplicados."
                             : "🤖 Nenhuma transação por aqui ainda...\nVamos movimentar sua conta? 💸"}
                     </Text>
@@ -260,14 +344,22 @@ export default function TransactionsScreen() {
                         data={transactions}
                         keyExtractor={(item) => item.id!}
                         renderItem={({ item }) => (
-                            <StatementCard transactions={[item]} onReload={handleRefresh} />
+                            <StatementCard
+                                transactions={[item]}
+                                onReload={handleRefresh}
+                            />
                         )}
                         onEndReached={handleLoadMore}
                         onEndReachedThreshold={0.5}
                         refreshing={refreshing}
                         onRefresh={handleRefresh}
                         ListFooterComponent={
-                            loadingMore ? <ActivityIndicator size="small" color="#004D61" /> : null
+                            loadingMore ? (
+                                <ActivityIndicator
+                                    size="small"
+                                    color="#004D61"
+                                />
+                            ) : null
                         }
                         contentContainerStyle={styles.listContent}
                         keyboardShouldPersistTaps="handled"

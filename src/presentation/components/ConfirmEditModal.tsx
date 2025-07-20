@@ -30,6 +30,7 @@ import { Transaction } from "./StatementCard";
 import { auth } from "@/infrastructure/firebase/config";
 import { updateUserBalance } from "@/infrastructure/firebase/getBalance";
 import { useAuth } from "@/contexts/useAuthContext";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 interface EditModalProps {
     visible: boolean;
@@ -275,6 +276,13 @@ export default function ConfirmEditModal({
             }
 
             await updateUserBalance(uid, transaction.isNegative ? -diff : diff);
+            try {
+                console.log("rmoveItem edit");
+                await AsyncStorage.removeItem(`transactions:${uid}`);
+                await AsyncStorage.removeItem(`balance:${uid}`);
+            } catch (cacheError) {
+                console.error("Erro enquanto removia o cache", cacheError);
+            }
             await refreshUserData();
             onFinish();
         } catch (error) {

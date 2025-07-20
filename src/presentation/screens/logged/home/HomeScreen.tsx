@@ -33,6 +33,7 @@ import {
 import { useFocusEffect } from "expo-router";
 import StatementCard, { Transaction } from "@/presentation/components/StatementCard";
 import { useAuth } from "@/contexts/useAuthContext";
+import { fetchWithCache } from "@/utils/fetchWithCache";
 
 const PAGE_SIZE = 5;
 
@@ -64,29 +65,47 @@ export default function HomeScreen() {
             if (initial) {
                 setLoading(true);
                 setLastDoc(null);
+
+                const data = await fetchWithCache(
+                    `transactions:${uid}`,
+                    async () => {
+                        console.log("[Firebase] Buscando transações do Firestore...");
+                        let baseQuery = query(
+                            collection(db, "users", uid, "transactions"),
+                            orderBy("date", "desc"),
+                            orderBy("createdAt", "desc"),
+                            limit(PAGE_SIZE)
+                        );
+                        const snapshot = await getDocs(baseQuery);
+                        setLastDoc(snapshot.docs[snapshot.docs.length - 1]);
+                        return snapshot.docs.map((doc) => ({
+                            id: doc.id,
+                            ...doc.data(),
+                        })) as Transaction[];
+                    },
+                    120
+                );
+                setTransactions(data);
             } else {
                 setLoadingMore(true);
+                // Para as próximas páginas, busca sem cache
+                let baseQuery = query(
+                    collection(db, "users", uid, "transactions"),
+                    orderBy("date", "desc"),
+                    orderBy("createdAt", "desc"),
+                    limit(PAGE_SIZE)
+                );
+                if (lastDoc) {
+                    baseQuery = query(baseQuery, startAfter(lastDoc));
+                }
+                const snapshot = await getDocs(baseQuery);
+                const newTransactions = snapshot.docs.map((doc) => ({
+                    id: doc.id,
+                    ...doc.data(),
+                })) as Transaction[];
+                setTransactions((prev) => [...prev, ...newTransactions]);
+                setLastDoc(snapshot.docs[snapshot.docs.length - 1]);
             }
-
-            let baseQuery = query(
-                collection(db, "users", uid, "transactions"),
-                orderBy("date", "desc"),
-                orderBy("createdAt", "desc"),
-                limit(PAGE_SIZE)
-            );
-
-            if (!initial && lastDoc) {
-                baseQuery = query(baseQuery, startAfter(lastDoc));
-            }
-
-            const snapshot = await getDocs(baseQuery);
-            const newTransactions = snapshot.docs.map((doc) => ({
-                id: doc.id,
-                ...doc.data(),
-            })) as Transaction[];
-
-            setTransactions((prev) => [...(initial ? [] : prev), ...newTransactions]);
-            setLastDoc(snapshot.docs[snapshot.docs.length - 1]);
         } catch (err) {
             console.error("Erro ao carregar transações da Home:", err);
         } finally {
@@ -97,15 +116,21 @@ export default function HomeScreen() {
 
     const fetchBalance = async () => {
         if (!uid) return;
-
         try {
-            const summaryRef = doc(db, "users", uid, "summary", "totals");
-            const snapshot = await getDoc(summaryRef);
-
-            if (snapshot.exists()) {
-                const data = snapshot.data();
-                setBalance(typeof data.balance === "number" ? data.balance : 0);
-            }
+            const data = await fetchWithCache(
+                `balance:${uid}`,
+                async () => {
+                    const summaryRef = doc(db, "users", uid, "summary", "totals");
+                    const snapshot = await getDoc(summaryRef);
+                    if (snapshot.exists()) {
+                        const data = snapshot.data();
+                        return typeof data.balance === "number" ? data.balance : 0;
+                    }
+                    return 0;
+                },
+                60
+            );
+            setBalance(data);
         } catch (err) {
             console.error("Erro ao buscar saldo:", err);
             setBalance(null);

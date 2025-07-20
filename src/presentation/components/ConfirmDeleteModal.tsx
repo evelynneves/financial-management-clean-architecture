@@ -24,6 +24,7 @@ import { Transaction } from "./StatementCard";
 import { auth } from "@/infrastructure/firebase/config";
 import { updateUserBalance } from "@/infrastructure/firebase/getBalance";
 import { useAuth } from "@/contexts/useAuthContext";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 interface ConfirmDeleteModalProps {
     visible: boolean;
@@ -104,6 +105,13 @@ export default function ConfirmDeleteModal({
 
             await updateUserBalance(uid, transaction.isNegative ? transaction.amount : -transaction.amount);
             await deleteDoc(transactionRef);
+            try {
+                console.log("rmoveItem delete");
+                await AsyncStorage.removeItem(`transactions:${uid}`);
+                await AsyncStorage.removeItem(`balance:${uid}`);
+            } catch (cacheError) {
+                console.error("Erro enquanto removia o cache", cacheError);
+            }
             await refreshUserData();
             onFinish();
             onReload();

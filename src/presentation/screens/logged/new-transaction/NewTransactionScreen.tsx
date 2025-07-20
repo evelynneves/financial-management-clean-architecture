@@ -37,6 +37,7 @@ import { auth } from "@/infrastructure/firebase/config";
 import { updateUserBalance } from "@/infrastructure/firebase/getBalance";
 import ScreenWrapper from "@/presentation/components/ScreenWrapper";
 import { useAuth } from "@/contexts/useAuthContext";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const transactionTypes = [
     { label: "Depósito", value: "deposito" },
@@ -224,6 +225,14 @@ const NewTransactionScreen = () => {
                     data.fixedIncome.total + data.variableIncome.total;
 
                 await setDoc(investmentsRef, toCurrencyData(data));
+            }
+
+            try {
+                console.log("rmoveItem create");
+                await AsyncStorage.removeItem(`transactions:${uid}`);
+                await AsyncStorage.removeItem(`balance:${uid}`);
+            } catch (cacheError) {
+                console.error("Erro ao limpar cache local:", cacheError);
             }
 
             await updateUserBalance(uid, isNegative ? -numericAmount : numericAmount);
