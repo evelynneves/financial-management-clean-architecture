@@ -20,24 +20,14 @@ import {
 } from "react-native";
 import RNPickerSelect from "react-native-picker-select";
 import DateTimePicker from "@react-native-community/datetimepicker";
-import {
-    getFirestore,
-    collection,
-    addDoc,
-    doc,
-    getDoc,
-    setDoc,
-    serverTimestamp,
-} from "firebase/firestore";
-import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import * as DocumentPicker from "expo-document-picker";
 import { router, useFocusEffect } from "expo-router";
 
 import { auth } from "@/infrastructure/firebase/config";
-import { updateUserBalance } from "@/infrastructure/firebase/getBalance";
 import ScreenWrapper from "@/presentation/components/ScreenWrapper";
 import { useAuth } from "@/contexts/useAuthContext";
-import AsyncStorage from "@react-native-async-storage/async-storage";
+import { formatCurrency, parseCurrency } from "@/infrastructure/firebase/investments/helpers";
+import { createTransaction } from "@/infrastructure/firebase/transactions/createTransaction";
 
 const transactionTypes = [
     { label: "Depósito", value: "deposito" },
@@ -50,10 +40,7 @@ const investmentOptions = [
     { label: "Bolsa de Valores", value: "Bolsa de Valores" },
     { label: "Fundos de investimento", value: "Fundos de investimento" },
     { label: "Previdência Privada Fixa", value: "Previdência Privada Fixa" },
-    {
-        label: "Previdência Privada Variável",
-        value: "Previdência Privada Variável",
-    },
+    { label: "Previdência Privada Variável", value: "Previdência Privada Variável" },
     { label: "Tesouro Direto", value: "Tesouro Direto" },
 ];
 
@@ -68,8 +55,6 @@ const NewTransactionScreen = () => {
         null
     );
     const { refreshUserData, userData } = useAuth();
-    const db = getFirestore();
-    const storage = getStorage();
     const [isSubmitting, setIsSubmitting] = useState(false);
 
     const handleInvestmentTypeChange = (value: string) => {
@@ -145,30 +130,16 @@ const NewTransactionScreen = () => {
             const uid = auth.currentUser?.uid;
             if (!uid || !amount) return;
 
-            let attachmentFileId: string | null = null;
-            let attachmentUrl: string | null = null;
-
-            if (pdf) {
-                const filePath = `receipts/${uid}/${Date.now()}_${pdf.name}`;
-                const response = await fetch(pdf.uri);
-                const blob = await response.blob();
-                const fileRef = ref(storage, filePath);
-
-                await uploadBytes(fileRef, blob);
-                attachmentFileId = filePath;
-                attachmentUrl = await getDownloadURL(fileRef);
-            }
-
             const monthNames = [
                 "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
                 "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"
             ];
             const month = monthNames[date.getMonth()];
             const formattedDate = date.toISOString().split("T")[0];
-            const numericAmount = parseCurrency(amount);
-            const isNegative = transactionType !== "deposito" && transactionType !== "resgate";
+            const isNegative =
+                transactionType !== "deposito" && transactionType !== "resgate";
 
-            const newTransaction = {
+            const transaction = {
                 month,
                 date: formattedDate,
                 type:
@@ -179,63 +150,14 @@ const NewTransactionScreen = () => {
                         : transactionType === "investimento"
                         ? "Investimento"
                         : "Resgate",
-                amount: numericAmount,
+                amount,
                 isNegative,
-                ...((transactionType === "investimento" || transactionType === "resgate") && { investmentType }),
-                attachmentFileId,
-                attachmentUrl,
-                createdAt: serverTimestamp(),
+                ...(transactionType === "investimento" || transactionType === "resgate"
+                    ? { investmentType }
+                    : {}),
             };
 
-            await addDoc(collection(db, "users", uid, "transactions"), newTransaction);
-
-            if (newTransaction.type === "Investimento" || newTransaction.type === "Resgate") {
-                const investmentsRef = doc(db, "users", uid, "investments", "summary");
-                const snapshot = await getDoc(investmentsRef);
-                const data = snapshot.exists()
-                    ? parseInvestmentData(snapshot.data())
-                    : getEmptyInvestments();
-
-                const delta = newTransaction.type === "Resgate" ? -numericAmount : numericAmount;
-                switch (investmentType) {
-                    case "Fundos de investimento":
-                        data.variableIncome.investmentFunds += delta;
-                        break;
-                    case "Tesouro Direto":
-                        data.fixedIncome.governmentBonds += delta;
-                        break;
-                    case "Previdência Privada Fixa":
-                        data.fixedIncome.privatePensionFixed += delta;
-                        break;
-                    case "Previdência Privada Variável":
-                        data.variableIncome.privatePensionVariable += delta;
-                        break;
-                    case "Bolsa de Valores":
-                        data.variableIncome.stockMarket += delta;
-                        break;
-                }
-
-                data.fixedIncome.total =
-                    data.fixedIncome.privatePensionFixed + data.fixedIncome.governmentBonds;
-                data.variableIncome.total =
-                    data.variableIncome.investmentFunds +
-                    data.variableIncome.privatePensionVariable +
-                    data.variableIncome.stockMarket;
-                data.totalAmount =
-                    data.fixedIncome.total + data.variableIncome.total;
-
-                await setDoc(investmentsRef, toCurrencyData(data));
-            }
-
-            try {
-                console.log("rmoveItem create");
-                await AsyncStorage.removeItem(`transactions:${uid}`);
-                await AsyncStorage.removeItem(`balance:${uid}`);
-            } catch (cacheError) {
-                console.error("Erro ao limpar cache local:", cacheError);
-            }
-
-            await updateUserBalance(uid, isNegative ? -numericAmount : numericAmount);
+            await createTransaction(uid, transaction, pdf);
             await refreshUserData();
             resetForm();
             router.replace("/home");
@@ -254,70 +176,6 @@ const NewTransactionScreen = () => {
         setPdf(null);
     };
 
-    const parseCurrency = (value: string): number => {
-        return (
-            parseFloat(value.replace(/[R$\.\s]/g, "").replace(",", ".")) || 0
-        );
-    };
-
-    const formatCurrency = (value: number, isNegative?: boolean): string => {
-        const prefix = isNegative ? "- R$" : "R$";
-        return `${prefix} ${value.toLocaleString("pt-BR", {
-            minimumFractionDigits: 2,
-        })}`;
-    };
-
-    const getEmptyInvestments = () => ({
-        totalAmount: 0,
-        fixedIncome: { total: 0, governmentBonds: 0, privatePensionFixed: 0 },
-        variableIncome: {
-            total: 0,
-            investmentFunds: 0,
-            privatePensionVariable: 0,
-            stockMarket: 0,
-        },
-    });
-
-    const parseInvestmentData = (data: any) => ({
-        totalAmount: parseCurrency(data.totalAmount),
-        fixedIncome: {
-            total: parseCurrency(data.fixedIncome.total),
-            governmentBonds: parseCurrency(data.fixedIncome.governmentBonds),
-            privatePensionFixed: parseCurrency(
-                data.fixedIncome.privatePensionFixed
-            ),
-        },
-        variableIncome: {
-            total: parseCurrency(data.variableIncome.total),
-            investmentFunds: parseCurrency(data.variableIncome.investmentFunds),
-            privatePensionVariable: parseCurrency(
-                data.variableIncome.privatePensionVariable
-            ),
-            stockMarket: parseCurrency(data.variableIncome.stockMarket),
-        },
-    });
-
-    const toCurrencyData = (data: any) => ({
-        totalAmount: formatCurrency(data.totalAmount),
-        fixedIncome: {
-            total: formatCurrency(data.fixedIncome.total),
-            governmentBonds: formatCurrency(data.fixedIncome.governmentBonds),
-            privatePensionFixed: formatCurrency(
-                data.fixedIncome.privatePensionFixed
-            ),
-        },
-        variableIncome: {
-            total: formatCurrency(data.variableIncome.total),
-            investmentFunds: formatCurrency(
-                data.variableIncome.investmentFunds
-            ),
-            privatePensionVariable: formatCurrency(
-                data.variableIncome.privatePensionVariable
-            ),
-            stockMarket: formatCurrency(data.variableIncome.stockMarket),
-        },
-    });
-
     useFocusEffect(
         useCallback(() => {
             return () => {
@@ -325,6 +183,12 @@ const NewTransactionScreen = () => {
             };
         }, [])
     );
+
+    const pickerStyles = {
+        inputIOS: pickerSelectStyles.inputIOS,
+        inputAndroid: pickerSelectStyles.inputAndroid,
+        inputWeb: pickerSelectStyles.inputWeb,
+    };
 
     return (
         <ScreenWrapper>
@@ -340,11 +204,7 @@ const NewTransactionScreen = () => {
                         onValueChange={setTransactionType}
                         value={transactionType}
                         items={transactionTypes}
-                        style={{
-                            inputIOS: pickerSelectStyles.inputIOS,
-                            inputAndroid: pickerSelectStyles.inputAndroid,
-                            inputWeb: pickerSelectStyles.inputWeb,
-                        }}
+                        style={pickerStyles}
                         useNativeAndroidPickerStyle={false}
                     />
                 </View>
@@ -366,11 +226,7 @@ const NewTransactionScreen = () => {
                                 onValueChange={handleInvestmentTypeChange}
                                 value={investmentType}
                                 items={investmentOptions}
-                                style={{
-                                    inputIOS: pickerSelectStyles.inputIOS,
-                                    inputAndroid: pickerSelectStyles.inputAndroid,
-                                    inputWeb: pickerSelectStyles.inputWeb,
-                                }}
+                                style={pickerStyles}
                                 useNativeAndroidPickerStyle={false}
                             />
                         </View>

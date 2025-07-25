@@ -1,13 +1,12 @@
 /******************************************************************************
-*                                                                             *
-* Creation Date : 16/04/2025                                                  *
-*                                                                             *
-* Property : (c) This program, code or item is the Intellectual Property of   *
-* Evelyn Neves Barreto. Any use or copy of this code is prohibited without    *
-* the express written authorization of Evelyn. All rights reserved.           *
-*                                                                             *
-*******************************************************************************/
-
+ *                                                                             *
+ * Creation Date : 16/04/2025                                                  *
+ *                                                                             *
+ * Property : (c) This program, code or item is the Intellectual Property of   *
+ * Evelyn Neves Barreto. Any use or copy of this code is prohibited without    *
+ * the express written authorization of Evelyn. All rights reserved.           *
+ *                                                                             *
+ *******************************************************************************/
 
 import React, { useState } from "react";
 import { Modal, View, Text, StyleSheet, TouchableOpacity } from "react-native";
@@ -22,9 +21,10 @@ import { getStorage, ref, deleteObject } from "firebase/storage";
 
 import { Transaction } from "./StatementCard";
 import { auth } from "@/infrastructure/firebase/config";
-import { updateUserBalance } from "@/infrastructure/firebase/getBalance";
 import { useAuth } from "@/contexts/useAuthContext";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { updateUserBalance } from "@/infrastructure/firebase/balance/updateUserBalance";
+import { getEmptyInvestments, parseInvestmentData, toCurrencyData } from "@/infrastructure/firebase/investments/helpers";
 
 interface ConfirmDeleteModalProps {
     visible: boolean;
@@ -53,7 +53,13 @@ export default function ConfirmDeleteModal({
         try {
             setIsDeleting(true);
 
-            const transactionRef = doc(db, "users", uid, "transactions", transaction.id);
+            const transactionRef = doc(
+                db,
+                "users",
+                uid,
+                "transactions",
+                transaction.id
+            );
             const amount = transaction.amount;
             const type = transaction.type;
             const investmentType = transaction.investmentType;
@@ -68,7 +74,13 @@ export default function ConfirmDeleteModal({
             if (type === "Investimento" || type === "Resgate") {
                 const delta = type === "Investimento" ? -amount : amount;
 
-                const investmentsRef = doc(db, "users", uid, "investments", "summary");
+                const investmentsRef = doc(
+                    db,
+                    "users",
+                    uid,
+                    "investments",
+                    "summary"
+                );
                 const snapshot = await getDoc(investmentsRef);
                 const data = snapshot.exists()
                     ? parseInvestmentData(snapshot.data())
@@ -93,20 +105,26 @@ export default function ConfirmDeleteModal({
                 }
 
                 data.fixedIncome.total =
-                    data.fixedIncome.privatePensionFixed + data.fixedIncome.governmentBonds;
+                    data.fixedIncome.privatePensionFixed +
+                    data.fixedIncome.governmentBonds;
                 data.variableIncome.total =
                     data.variableIncome.investmentFunds +
                     data.variableIncome.privatePensionVariable +
                     data.variableIncome.stockMarket;
-                data.totalAmount = data.fixedIncome.total + data.variableIncome.total;
+                data.totalAmount =
+                    data.fixedIncome.total + data.variableIncome.total;
 
                 await setDoc(investmentsRef, toCurrencyData(data));
             }
 
-            await updateUserBalance(uid, transaction.isNegative ? transaction.amount : -transaction.amount);
+            await updateUserBalance(
+                uid,
+                transaction.isNegative
+                    ? transaction.amount
+                    : -transaction.amount
+            );
             await deleteDoc(transactionRef);
             try {
-                console.log("rmoveItem delete");
                 await AsyncStorage.removeItem(`transactions:${uid}`);
                 await AsyncStorage.removeItem(`balance:${uid}`);
             } catch (cacheError) {
@@ -162,62 +180,6 @@ export default function ConfirmDeleteModal({
         </Modal>
     );
 }
-
-const formatCurrency = (value: number, isNegative?: boolean): string => {
-    const prefix = isNegative ? "- R$" : "R$";
-    return `${prefix} ${value.toLocaleString("pt-BR", {
-        minimumFractionDigits: 2,
-    })}`;
-};
-
-const getEmptyInvestments = () => ({
-    totalAmount: 0,
-    fixedIncome: {
-        total: 0,
-        governmentBonds: 0,
-        privatePensionFixed: 0,
-    },
-    variableIncome: {
-        total: 0,
-        investmentFunds: 0,
-        privatePensionVariable: 0,
-        stockMarket: 0,
-    },
-});
-
-const parseInvestmentData = (data: any) => ({
-    totalAmount: parseFloat(data.totalAmount.replace(/[R$\.\s]/g, "").replace(",", ".")) || 0,
-    fixedIncome: {
-        total: parseFloat(data.fixedIncome.total.replace(/[R$\.\s]/g, "").replace(",", ".")) || 0,
-        governmentBonds: parseFloat(data.fixedIncome.governmentBonds.replace(/[R$\.\s]/g, "").replace(",", ".")) || 0,
-        privatePensionFixed: parseFloat( data.fixedIncome.privatePensionFixed .replace(/[R$\.\s]/g, "") .replace(",", ".") ) || 0,
-    },
-    variableIncome: {
-        total: parseFloat(data.variableIncome.total.replace(/[R$\.\s]/g, "").replace(",", ".")) || 0,
-        investmentFunds: parseFloat(data.variableIncome.investmentFunds.replace(/[R$\.\s]/g, "").replace(",", ".")) || 0,
-        privatePensionVariable: parseFloat(data.variableIncome.privatePensionVariable.replace(/[R$\.\s]/g, "").replace(",", ".")) || 0,
-        stockMarket:parseFloat(data.variableIncome.stockMarket.replace(/[R$\.\s]/g, "").replace(",", ".")) || 0,
-    },
-});
-
-const toCurrencyData = (data: any) => ({
-    totalAmount: formatCurrency(data.totalAmount),
-    fixedIncome: {
-        total: formatCurrency(data.fixedIncome.total),
-        governmentBonds: formatCurrency(data.fixedIncome.governmentBonds),
-        privatePensionFixed: formatCurrency(
-            data.fixedIncome.privatePensionFixed
-        ),
-    },
-    variableIncome: {
-        total: formatCurrency(data.variableIncome.total),
-        investmentFunds: formatCurrency(data.variableIncome.investmentFunds),
-        privatePensionVariable: formatCurrency(
-            data.variableIncome.privatePensionVariable
-        ),
-        stockMarket: formatCurrency(data.variableIncome.stockMarket),
-    },
-});
 
 const styles = StyleSheet.create({
     overlay: {

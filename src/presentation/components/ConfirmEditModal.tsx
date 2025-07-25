@@ -6,7 +6,7 @@
 * Evelyn Neves Barreto. Any use or copy of this code is prohibited without    *
 * the express written authorization of Evelyn. All rights reserved.           *
 *                                                                             *
-*******************************************************************************/
+******************************************************************************/
 
 import React, { useEffect, useState } from "react";
 import {
@@ -28,9 +28,11 @@ import {
 
 import { Transaction } from "./StatementCard";
 import { auth } from "@/infrastructure/firebase/config";
-import { updateUserBalance } from "@/infrastructure/firebase/getBalance";
 import { useAuth } from "@/contexts/useAuthContext";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { formatCurrency, getEmptyInvestments, parseCurrency, parseInvestmentData, toCurrencyData } from "@/infrastructure/firebase/investments/helpers";
+import { updateUserBalance } from "@/infrastructure/firebase/balance/updateUserBalance";
+
 
 interface EditModalProps {
     visible: boolean;
@@ -58,48 +60,50 @@ export default function ConfirmEditModal({
         if (transaction) {
             const [year, month, day] = transaction.date.split("-");
             setDate(new Date(Number(year), Number(month) - 1, Number(day)));
-            setAmount(formatCurrency(transaction.amount));
+
+            const amountValue =
+                typeof transaction.amount === "number"
+                    ? transaction.amount
+                    : parseCurrency(transaction.amount ?? "");
+
+            setAmount(formatCurrency(amountValue));
 
             if (transaction.type === "Resgate") {
                 const data = userData?.investments;
                 let available = 0;
-                const current = parseCurrency(transaction.amount);
+                const current = amountValue;
 
                 switch (transaction.investmentType) {
                     case "Fundos de investimento":
                         available =
-                            parseCurrency(
-                                data?.variableIncome.investmentFunds
-                            ) + current;
+                            parseCurrency(data?.variableIncome.investmentFunds?.toString() ?? "") + current;
                         break;
                     case "Tesouro Direto":
                         available =
-                            parseCurrency(data?.fixedIncome.governmentBonds) +
-                            current;
+                            parseCurrency(data?.fixedIncome.governmentBonds?.toString() ?? "") + current;
                         break;
                     case "Previdência Privada Fixa":
                         available =
-                            parseCurrency(
-                                data?.fixedIncome.privatePensionFixed
-                            ) + current;
+                            parseCurrency(data?.fixedIncome.privatePensionFixed?.toString() ?? "") + current;
                         break;
                     case "Previdência Privada Variável":
                         available =
                             parseCurrency(
-                                data?.variableIncome.privatePensionVariable
-                            ) + current;
+                                data?.variableIncome.privatePensionVariable?.toString() ?? "") + current;
                         break;
                     case "Bolsa de Valores":
                         available =
-                            parseCurrency(data?.variableIncome.stockMarket) +
-                            current;
+                            parseCurrency(
+                                data?.variableIncome.stockMarket?.toString() ?? "") + current;
                         break;
                 }
+
                 setAvailableAmount(available);
             }
         }
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [transaction]);
+
 
     const handleAmountChange = (value: string) => {
         let onlyNumbers = value.replace(/\D/g, "");
@@ -114,30 +118,6 @@ export default function ConfirmEditModal({
         setAmount(formatted);
     };
 
-    const parseCurrency = (value: string | number | undefined): number => {
-        if (!value) return 0;
-
-        if (typeof value === "number") return value;
-
-        const hasComma = value.includes(",");
-        const cleaned = value
-            .replace(/[^\d,\.]/g, "")
-
-        if (hasComma) {
-            return parseFloat(cleaned.replace(/\./g, "").replace(",", "."));
-        } else {
-            return parseFloat(cleaned);
-        }
-    };
-
-
-    const formatCurrency = (value: number, isNegative?: boolean): string => {
-        const prefix = isNegative ? "- R$" : "R$";
-        return `${prefix}${value.toLocaleString("pt-BR", {
-            minimumFractionDigits: 2,
-        })}`;
-    };
-
     const isValid = (): boolean => {
         const numericAmount = parseCurrency(amount);
         const maxAvailable =
@@ -145,61 +125,6 @@ export default function ConfirmEditModal({
 
         return numericAmount > 0 && numericAmount <= maxAvailable;
     };
-
-    const getEmptyInvestments = () => ({
-        totalAmount: 0,
-        fixedIncome: {
-            total: 0,
-            governmentBonds: 0,
-            privatePensionFixed: 0,
-        },
-        variableIncome: {
-            total: 0,
-            investmentFunds: 0,
-            privatePensionVariable: 0,
-            stockMarket: 0,
-        },
-    });
-
-    const parseInvestmentData = (data: any) => ({
-        totalAmount: parseCurrency(data.totalAmount),
-        fixedIncome: {
-            total: parseCurrency(data.fixedIncome.total),
-            governmentBonds: parseCurrency(data.fixedIncome.governmentBonds),
-            privatePensionFixed: parseCurrency(
-                data.fixedIncome.privatePensionFixed
-            ),
-        },
-        variableIncome: {
-            total: parseCurrency(data.variableIncome.total),
-            investmentFunds: parseCurrency(data.variableIncome.investmentFunds),
-            privatePensionVariable: parseCurrency(
-                data.variableIncome.privatePensionVariable
-            ),
-            stockMarket: parseCurrency(data.variableIncome.stockMarket),
-        },
-    });
-
-    const toCurrencyData = (data: any) => ({
-        totalAmount: formatCurrency(data.totalAmount),
-        fixedIncome: {
-            total: formatCurrency(data.fixedIncome.total),
-            governmentBonds: formatCurrency(data.fixedIncome.governmentBonds),
-            privatePensionFixed: formatCurrency(
-                data.fixedIncome.privatePensionFixed
-            ),
-        },
-        variableIncome: {
-            total: formatCurrency(data.variableIncome.total),
-            investmentFunds: formatCurrency(
-                data.variableIncome.investmentFunds
-            ),
-            privatePensionVariable: formatCurrency(
-                data.variableIncome.privatePensionVariable
-            ),
-            stockMarket: formatCurrency(data.variableIncome.stockMarket),
-        },
-    });
 
     const handleSave = async () => {
         if (!transaction) return;
@@ -373,7 +298,7 @@ export default function ConfirmEditModal({
                                 </Text>
                             ) : (
                                 <Text style={styles.availableText}>
-                                    Valor disponível para resgate:{" "}
+                                    Valor disponível para resgate: {" "}
                                     {formatCurrency(availableAmount)}
                                 </Text>
                             )}
@@ -482,3 +407,4 @@ const styles = StyleSheet.create({
         marginBottom: 10,
     },
 });
+
