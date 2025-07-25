@@ -16,15 +16,18 @@ import { ActivityIndicator, Platform, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import UserMenu from "@/presentation/components/UserMenu";
 import { useAuth } from "@/contexts/useAuthContext";
+import { useAutoLogout } from "@/hooks/useAutoLogout";
 
 export default function LoggedLayout() {
     const { user, loading } = useAuth();
     const router = useRouter();
+    useAutoLogout();
 
     useEffect(() => {
         if (!loading && !user) {
             router.replace("/(unlogged)");
         }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [loading, user]);
 
     if (loading || (!user && !loading)) {

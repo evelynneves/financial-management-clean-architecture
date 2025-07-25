@@ -9,17 +9,39 @@
 *******************************************************************************/
 
 import React from "react";
-import { ScrollView, StyleSheet } from "react-native";
+import {
+    ScrollView,
+    StyleSheet,
+    GestureResponderEvent,
+    TouchableWithoutFeedback,
+    Keyboard,
+} from "react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+
+const LAST_ACTIVITY_KEY = "lastActivity";
 
 export default function ScreenWrapper({
     children,
 }: {
     children: React.ReactNode;
 }) {
+    const handleTouch = async (_event: GestureResponderEvent) => {
+        await AsyncStorage.setItem(LAST_ACTIVITY_KEY, Date.now().toString());
+    };
+
     return (
-        <ScrollView contentContainerStyle={styles.container}>
-            {children}
-        </ScrollView>
+        <TouchableWithoutFeedback
+            onPressIn={handleTouch}
+            onPress={Keyboard.dismiss}
+            accessible={false}
+        >
+            <ScrollView
+                contentContainerStyle={styles.container}
+                keyboardShouldPersistTaps="handled"
+            >
+                {children}
+            </ScrollView>
+        </TouchableWithoutFeedback>
     );
 }
 
