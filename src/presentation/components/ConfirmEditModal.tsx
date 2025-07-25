@@ -202,7 +202,6 @@ export default function ConfirmEditModal({
 
             await updateUserBalance(uid, transaction.isNegative ? -diff : diff);
             try {
-                console.log("rmoveItem edit");
                 await AsyncStorage.removeItem(`transactions:${uid}`);
                 await AsyncStorage.removeItem(`balance:${uid}`);
             } catch (cacheError) {

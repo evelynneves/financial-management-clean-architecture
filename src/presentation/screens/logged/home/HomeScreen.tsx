@@ -65,47 +65,31 @@ export default function HomeScreen() {
             if (initial) {
                 setLoading(true);
                 setLastDoc(null);
-
-                const data = await fetchWithCache(
-                    `transactions:${uid}`,
-                    async () => {
-                        console.log("[Firebase] Buscando transações do Firestore...");
-                        let baseQuery = query(
-                            collection(db, "users", uid, "transactions"),
-                            orderBy("date", "desc"),
-                            orderBy("createdAt", "desc"),
-                            limit(PAGE_SIZE)
-                        );
-                        const snapshot = await getDocs(baseQuery);
-                        setLastDoc(snapshot.docs[snapshot.docs.length - 1]);
-                        return snapshot.docs.map((doc) => ({
-                            id: doc.id,
-                            ...doc.data(),
-                        })) as Transaction[];
-                    },
-                    120
-                );
-                setTransactions(data);
             } else {
                 setLoadingMore(true);
-                // Para as próximas páginas, busca sem cache
-                let baseQuery = query(
-                    collection(db, "users", uid, "transactions"),
-                    orderBy("date", "desc"),
-                    orderBy("createdAt", "desc"),
-                    limit(PAGE_SIZE)
-                );
-                if (lastDoc) {
-                    baseQuery = query(baseQuery, startAfter(lastDoc));
-                }
-                const snapshot = await getDocs(baseQuery);
-                const newTransactions = snapshot.docs.map((doc) => ({
-                    id: doc.id,
-                    ...doc.data(),
-                })) as Transaction[];
-                setTransactions((prev) => [...prev, ...newTransactions]);
-                setLastDoc(snapshot.docs[snapshot.docs.length - 1]);
             }
+
+            let baseQuery = query(
+                collection(db, "users", uid, "transactions"),
+                orderBy("date", "desc"),
+                orderBy("createdAt", "desc"),
+                limit(PAGE_SIZE)
+            );
+
+            if (!initial && lastDoc) {
+                baseQuery = query(baseQuery, startAfter(lastDoc));
+            }
+
+            const snapshot = await getDocs(baseQuery);
+            const newTransactions = snapshot.docs.map((doc) => ({
+                id: doc.id,
+                ...doc.data(),
+            })) as Transaction[];
+
+            setTransactions((prev) =>
+                initial ? newTransactions : [...prev, ...newTransactions]
+            );
+            setLastDoc(snapshot.docs[snapshot.docs.length - 1]);
         } catch (err) {
             console.error("Erro ao carregar transações da Home:", err);
         } finally {

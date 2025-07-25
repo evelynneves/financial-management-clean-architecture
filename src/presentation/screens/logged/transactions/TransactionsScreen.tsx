@@ -40,7 +40,6 @@ import StatementCard, {
     Transaction,
 } from "@/presentation/components/StatementCard";
 import { auth } from "@/infrastructure/firebase/config";
-import { fetchWithCache } from "@/utils/fetchWithCache";
 
 const PAGE_SIZE = 5;
 const transactionTypes = [
@@ -131,37 +130,9 @@ export default function TransactionsScreen() {
         try {
             if (!uid) return;
 
-            const isNoFilter =
-                !debouncedSearchTerm.trim() &&
-                selectedTypes.length === 0 &&
-                !selectedDate;
-
             if (initial) {
-                if (isNoFilter) {
-                    setLoading(true);
-                    setLastDoc(null);
-
-                    const data = await fetchWithCache(
-                        `transactions:${uid}`,
-                        async () => {
-                            const q = buildQuery();
-                            const snapshot = await getDocs(q);
-                            const docs = snapshot.docs.map((doc) => ({
-                                ...(doc.data() as Record<string, any>),
-                                id: doc.id,
-                            })) as Transaction[];
-                            setLastDoc(snapshot.docs[snapshot.docs.length - 1]);
-                            return docs;
-                        },
-                        120
-                    );
-
-                    setTransactions(data);
-                    return;
-                } else {
-                    setLoading(true);
-                    setLastDoc(null);
-                }
+                setLoading(true);
+                setLastDoc(null);
             } else {
                 setLoadingMore(true);
             }
@@ -176,10 +147,10 @@ export default function TransactionsScreen() {
 
             const filtered = debouncedSearchTerm
                 ? docs.filter((t) =>
-                      String(t.amount)
-                          .replace(/\D/g, "")
-                          .includes(debouncedSearchTerm.replace(/\D/g, ""))
-                  )
+                    String(t.amount)
+                        .replace(/\D/g, "")
+                        .includes(debouncedSearchTerm.replace(/\D/g, ""))
+                )
                 : docs;
 
             setTransactions((prev) => [...(initial ? [] : prev), ...filtered]);
