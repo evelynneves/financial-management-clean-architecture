@@ -63,6 +63,23 @@ npm start
 
 **Esse usuário já possui permissões para acessar e testar as funcionalidades do app, como adicionar, editar e visualizar transações financeiras.**
 
+## 🧠 Cache de Dados
+O app utiliza AsyncStorage para armazenar em cache as informações do usuário (como saldo e investimentos) por 5 minutos, utilizando a função fetchWithCache. Isso melhora a performance e reduz chamadas ao Firebase.
+
+## 🖼️ Pré-carregamento de Assets
+O app utiliza o expo-asset para pré-carregar imagens e ícones usados nas seções principais, garantindo uma navegação mais fluida e sem atrasos no carregamento visual. Isso ocorre na inicialização do app, antes do acesso à tela principal.
+
+## 🔒 Logout Automático por Inatividade
+O app possui uma lógica de logout automático após 30 minutos de inatividade.
+> ⚠️ Observação: Esse comportamento pode não funcionar corretamente no Expo Go, pois o app não é encerrado totalmente em segundo plano. No app publicado (APK/IPA), o logout automático funciona como esperado.
+
+## 🧱 Arquitetura
+Este projeto foi estruturado seguindo os princípios da Clean Architecture, com separação clara entre:
+- `domain`: entidades e contratos
+- `infrastructure`: Firebase e integração com serviços
+- `presentation`: componentes e telas visuais
+- `contexts`: gerenciamento global de estado
+
 ## 🛠 Scripts disponíveis
 - `npm start`: Inicia o projeto com o menu interativo do Expo
 - `npm run android`: Abre o app em um emulador Android
